@@ -82,7 +82,9 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: "*" //sabhi jagah se access allow karne k liye
+}));
 //const userRoutes = require("./routes/userRoutes");
 //app.use("/api/users",userRoutes);
 app.use(express.json());
