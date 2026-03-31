@@ -50,7 +50,7 @@
 
 
 
-require("dotenv").config();
+/*require("dotenv").config();
 const cors = require("cors");
 const express = require("express");
 const mongoose = require("mongoose");
@@ -71,6 +71,58 @@ app.use(cors({
 app.use(express.json()); // Ek hi baar kaafi hai
 
 // 2. Ensure Folders Exist (Very important for PDF generation)
+const reportsDir = path.join(__dirname, "uploads", "reports");
+if (!fs.existsSync(reportsDir)) {
+  fs.mkdirSync(reportsDir, { recursive: true });
+}
+
+// 3. Static Folder
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// 4. Routes
+app.use("/api/users", require("./routes/userRoutes"));
+app.use("/api/products", require("./routes/productRoutes"));
+app.use("/api/customers", require("./routes/customerRoutes"));
+app.use("/api/invoices", require("./routes/invoiceRoutes"));
+app.use("/api/dashboard", require("./routes/dashboardRoutes"));
+
+// 5. DB Connect & Server Start
+const PORT = process.env.PORT || 5000;
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log("✅ MongoDB Connected");
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+  })
+  .catch((err) => console.log("❌ DB Error:", err));*/
+
+
+
+  require("dotenv").config(); // 'R' ko 'r' kiya
+const cors = require("cors");
+const express = require("express");
+const mongoose = require("mongoose");
+const path = require("path");
+const fs = require("fs");
+
+const app = express();
+
+// 1. Middlewares
+app.use(cors({ 
+  origin: [
+    "http://localhost:5173", 
+    "http://localhost:5174", 
+    "https://inventory-and-billing-system-fronte.vercel.app" 
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // OPTIONS zaroori hai preflight ke liye
+  credentials: true 
+}));
+
+app.use(express.json());
+
+// 2. Ensure Folders Exist
 const reportsDir = path.join(__dirname, "uploads", "reports");
 if (!fs.existsSync(reportsDir)) {
   fs.mkdirSync(reportsDir, { recursive: true });
