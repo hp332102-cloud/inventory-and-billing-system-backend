@@ -751,7 +751,8 @@ exports.generateMonthlyReportPDF = async (req, res) => {
       totalGST;
 
     // create folder(ye folder path banata he)
-    const uploadDir = path.join(__dirname, "../uploads/reports");
+    //const uploadDir = path.join(__dirname, "../uploads");
+    const uploadDir = path.join(process.cwd(), "uploads", "reports");
 
     //agar folder exist nahi karta to create karenga
     if (!fs.existsSync(uploadDir)) {
@@ -759,11 +760,12 @@ exports.generateMonthlyReportPDF = async (req, res) => {
     }
 
     const fileName = qStartDate && qEndDate 
-      ? `sales-report-${qStartDate}-to-${qEndDate}.pdf`
-      : `monthly-report-${month}-${year}.pdf`;
+      ? `sales-report-${qStartDate}-to-${qEndDate}-${Date.now()}.pdf`
+      : `monthly-report-${month}-${year}-${Date.now()}.pdf`;
 
     const filePath =
       path.join(uploadDir, fileName);
+
 
     const doc = new PDFDocument({ margin: 50 });
 
@@ -852,40 +854,48 @@ exports.generateMonthlyReportPDF = async (req, res) => {
       const colTotal = 435;
       const colDate = 500;
 
-      // Table Header
-      const headerY = doc.y;
-      doc.fontSize(9).font("Helvetica-Bold");
-      doc.text("No", colNo, headerY);
-      doc.text("Invoice #", colInv, headerY);
-      doc.text("Customer", colCust, headerY);
-      doc.text("Taxable", colTax, headerY);
-      doc.text("Disc", colDisc, headerY);
-      doc.text("GST", colGST, headerY);
-      doc.text("Total", colTotal, headerY);
-      doc.text("Date", colDate, headerY);
+      // Helper function to print headers
+      const printHeaders = (startY) => {
+        doc.fontSize(9).font("Helvetica-Bold");
+        doc.text("No", colNo, startY);
+        doc.text("Invoice #", colInv, startY);
+        doc.text("Customer", colCust, startY);
+        doc.text("Taxable", colTax, startY);
+        doc.text("Disc", colDisc, startY);
+        doc.text("GST", colGST, startY);
+        doc.text("Total", colTotal, startY);
+        doc.text("Date", colDate, startY);
+        doc.moveTo(colNo, startY + 14).lineTo(560, startY + 14).stroke();
+      };
 
-      doc.moveTo(colNo, headerY + 14).lineTo(560, headerY + 14).stroke();
+      // Print first page headers
+      const headerY = doc.y;
+      printHeaders(headerY);
 
       let y = headerY + 24;
       doc.font("Helvetica").fontSize(9);
 
       invoices.forEach((inv, index) => {
-        if (y > 720) {
+        if (y > 700) { // Check before bottom margin to avoid PDFKit auto page add bugs
+          doc.moveTo(colNo, y).lineTo(560, y).stroke(); // Bottom line of current page
           doc.addPage();
           y = 50;
+          printHeaders(y);
+          y += 24;
+          doc.font("Helvetica").fontSize(9);
         }
 
         const totalDiscount = (inv.totalDiscount || 0) + (inv.billDiscount || 0);
         const totalGST = (inv.cgst || 0) + (inv.sgst || 0) + (inv.igst || 0);
 
-        doc.text(index + 1, colNo, y);
-        doc.text(inv.invoiceNumber, colInv, y);
-        doc.text(inv.customerName.substring(0, 14), colCust, y);
-        doc.text(inv.subTotal.toFixed(2), colTax, y);
-        doc.text(totalDiscount.toFixed(2), colDisc, y);
-        doc.text(totalGST.toFixed(2), colGST, y);
-        doc.text(inv.totalAmount.toFixed(2), colTotal, y);
-        doc.text(new Date(inv.createdAt).toLocaleDateString(), colDate, y);
+        doc.text(index + 1, colNo, y, { lineBreak: false });
+        doc.text(inv.invoiceNumber, colInv, y, { lineBreak: false });
+        doc.text(inv.customerName.substring(0, 14), colCust, y, { lineBreak: false });
+        doc.text(inv.subTotal.toFixed(2), colTax, y, { lineBreak: false });
+        doc.text(totalDiscount.toFixed(2), colDisc, y, { lineBreak: false });
+        doc.text(totalGST.toFixed(2), colGST, y, { lineBreak: false });
+        doc.text(inv.totalAmount.toFixed(2), colTotal, y, { lineBreak: false });
+        doc.text(new Date(inv.createdAt).toLocaleDateString(), colDate, y, { lineBreak: false });
 
         y += 20;
       });
@@ -896,13 +906,11 @@ exports.generateMonthlyReportPDF = async (req, res) => {
     doc.end();
 
     writeStream.on("finish", () => {
-
       res.json({
         success: true,
         message: "Monthly PDF generated",
         file: `/uploads/reports/${fileName}`
       });
-
     });
     //agar file save karte waqt koi error aaye (optional par achha he)
     writeStream.on("error", (err) => {

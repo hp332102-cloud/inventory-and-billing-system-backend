@@ -1,120 +1,99 @@
-/*const express = require("express");
-const dotenv = require("dotenv");
-const connectDB = require("./config/db");
-const productRoutes = require("./routes/productRoutes");
-app.unsubscribe("/api/products",productRoutes);
 
-dotenv.config();
-connectDB();
+// require("dotenv").config();
+// const cors = require("cors");
+// const express = require("express");
+// const mongoose = require("mongoose");
 
-const app = express();
-app.use(express.json());
+// const path = require("path");
 
-app.get("/", (req, res) => {
-  res.send("Inventory Billing API Running");
-});
-
-app.listen(5000, () => {
-  console.log("Server started on port 5000");
-});*/
+// const dashboardRoutes = require("./routes/dashboardRoutes");
 
 
-/*const express = require("express");
-const mongoose = require("mongoose");
-const dotenv = require("dotenv");
+// const app = express();
 
-dotenv.config();
+// app.use(cors({
+//   origin: "*" //sabhi jagah se access allow karne k liye
+// }));
+// //const userRoutes = require("./routes/userRoutes");
+// //app.use("/api/users",userRoutes);
+// app.use(express.json());
+// app.use("/api/users",require("./routes/userRoutes"));
 
-const app = express();   // ✅ app YAHAN banta hai
+// // Body parser
+// app.use(express.json()); // Ye zaruri hai, warna req.body undefined ayega
 
-// Middleware
-app.use(express.json());
+// // Routes
+// app.use("/api/products", require("./routes/productRoutes"));
+// app.use("/api/customers", require("./routes/customerRoutes"));//customerRoute add kiya
+// app.use("/api/invoices", require("./routes/invoiceRoutes"));//invoiceRoute add 
 
-// MongoDB connect
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.log(err));
+// // Static folder
+// app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Routes
-const productRoutes = require("./routes/productRoutes");
-app.use("/api/products", productRoutes);   // ✅ yahan use hota hai
+// //app.use("/uploads", express.static("uploads"));//pdf generator mate
 
-// Server start
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});*/
+// app.use("/api/dashboard", dashboardRoutes);
 
 
-/*const express = require("express");
-const dotenv = require("dotenv");
-const connectDB = require("./config/db");
 
-dotenv.config();
-connectDB();
+// // DB Connect
+// const PORT = process.env.PORT || 5000;//render mate
+// mongoose
+//   .connect(process.env.MONGO_URI)
+//   .then(() => {
+//     console.log("MongoDB Connected");
+//     app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+//   })
+//   .catch((err) => console.log(err));
 
-const app = express();
+// //Note: Maine 0.0.0.0 isliye add kiya hai taaki Render ka network aapke server ko bahar se access kar sake.
 
-// 🔥 VERY IMPORTANT (YE LINE MISS HUI TO SAB FAIL)
-app.use(express.json());
 
-const productRoutes = require("./routes/productRoutes");
-app.use("/api/products", productRoutes);
-
-app.get("/", (req, res) => {
-  res.send("Server running");
-});
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
-});*/
 
 require("dotenv").config();
 const cors = require("cors");
 const express = require("express");
 const mongoose = require("mongoose");
-
 const path = require("path");
-
-const dashboardRoutes = require("./routes/dashboardRoutes");
-
+const fs = require("fs"); // Added for folder check
 
 const app = express();
 
-app.use(cors({
-  origin: "*" //sabhi jagah se access allow karne k liye
+// 1. Middlewares
+//app.use(cors({ origin: "*" }));
+
+// 1. Middlewares
+app.use(cors({ 
+  origin: ["http://localhost:5173", "http://localhost:5174", "https://vercel.com/hp332102-clouds-projects/inventory-and-billing-system-frontend"], // Local aur Vercel dono allow karein
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true 
 }));
-//const userRoutes = require("./routes/userRoutes");
-//app.use("/api/users",userRoutes);
-app.use(express.json());
-app.use("/api/users",require("./routes/userRoutes"));
+app.use(express.json()); // Ek hi baar kaafi hai
 
-// Body parser
-app.use(express.json()); // Ye zaruri hai, warna req.body undefined ayega
+// 2. Ensure Folders Exist (Very important for PDF generation)
+const reportsDir = path.join(__dirname, "uploads", "reports");
+if (!fs.existsSync(reportsDir)) {
+  fs.mkdirSync(reportsDir, { recursive: true });
+}
 
-// Routes
-app.use("/api/products", require("./routes/productRoutes"));
-app.use("/api/customers", require("./routes/customerRoutes"));//customerRoute add kiya
-app.use("/api/invoices", require("./routes/invoiceRoutes"));//invoiceRoute add 
-
-// Static folder
+// 3. Static Folder
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-//app.use("/uploads", express.static("uploads"));//pdf generator mate
+// 4. Routes
+app.use("/api/users", require("./routes/userRoutes"));
+app.use("/api/products", require("./routes/productRoutes"));
+app.use("/api/customers", require("./routes/customerRoutes"));
+app.use("/api/invoices", require("./routes/invoiceRoutes"));
+app.use("/api/dashboard", require("./routes/dashboardRoutes"));
 
-app.use("/api/dashboard", dashboardRoutes);
-
-
-
-// DB Connect
-const PORT = process.env.PORT || 5000;//render mate
+// 5. DB Connect & Server Start
+const PORT = process.env.PORT || 5000;
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
-    console.log("MongoDB Connected");
-    app.listen(PORT, "0.0.0.0", () => console.log(`Server running on port ${PORT}`));
+    console.log("✅ MongoDB Connected");
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
   })
-  .catch((err) => console.log(err));
-
-//Note: Maine 0.0.0.0 isliye add kiya hai taaki Render ka network aapke server ko bahar se access kar sake.
+  .catch((err) => console.log("❌ DB Error:", err));
