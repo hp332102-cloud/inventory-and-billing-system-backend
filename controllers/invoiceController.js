@@ -904,6 +904,14 @@ exports.generateMonthlyReportPDF = async (req, res) => {
       });
 
     });
+    //agar file save karte waqt koi error aaye (optional par achha he)
+    writeStream.on("error", (err) => {
+      console.error("PDF Save Error:",err);
+      res.status(500).json({
+        success: false,
+        message: "File note save!!"
+      });
+    });
 
   } catch (error) {
 
