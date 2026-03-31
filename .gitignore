@@ -1,2 +1,22 @@
-node_modules
+# node_modules
+# .env
+
+
+# Dependencies
+node_modules/
+
+# Environment Variables (Very Important for Security)
 .env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS related files
+.DS_Store
+Thumbs.db
+
+# Generated Uploads (Optional: Agar aap reports ko Git par nahi bhejna chahte)
+uploads/*.pdf
+uploads/reports/*.pdf
