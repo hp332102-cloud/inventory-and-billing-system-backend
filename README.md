@@ -19,7 +19,9 @@
 
 ## 1. Project Abstract & Objective
 
+
 ### Abstract
+
 
 The **Inventory & Billing System** is a comprehensive web-based application designed to streamline inventory management and billing operations for businesses. Built with modern web technologies, this system provides a complete solution for managing products, customers, invoices, and GST calculations with real-time reporting capabilities.
 
