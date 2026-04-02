@@ -27,7 +27,10 @@ const customerSchema = new mongoose.Schema({
     },
     email: {
         type: String,
-        trim: true
+        trim: true,
+        unique: true,
+        sparse: true,
+        lowercase: true
     },
     state: {
         type: String,
@@ -40,7 +43,10 @@ const customerSchema = new mongoose.Schema({
     },
     gstNumber: {
         type: String,
-        trim: true
+        trim: true,
+        unique: true,
+        sparse: true,
+        uppercase: true
     }
 }, { timestamps: true });
 
