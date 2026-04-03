@@ -56,114 +56,132 @@ This system provides an automated, GST-compliant solution featuring:
 
 ```
 ┌─────────────────────┐        ┌──────────────────────┐        ┌──────────────────────┐
-│       Product        │        │       Customer        │        │       Invoice         │
-├─────────────────────┤        ├──────────────────────┤        ├──────────────────────┤
-│ _id                 │        │ _id                  │        │ _id                  │
-│ name                │        │ name                 │        │ invoiceNumber        │
-│ hsnCode             │        │ mobile               │        │ customerName         │
-│ price               │        │ email                │        │ customerEmail        │
-│ stock               │        │ state                │        │ items                │
-│ category            │        │ gstNumber            │        │ totalAmount          │
-│ gstRate             │        │ address              │        │ status               │
-│ discountType        │        └──────────────────────┘        │ paymentStatus        │
-│ discountPercent     │                   │                     │ isInterState         │
-│ lowStockThreshold   │               1 ──┤                     │ createdBy            │
-└─────────────────────┘                   │                     │ createdAt            │
-           │                              ▼                     └──────────────────────┘
-       1 ──┤                   ┌──────────────────────┐                    │
-           ▼                   │     InvoiceItem       │              1 ───┤
-┌─────────────────────┐        ├──────────────────────┤                   ▼
-│        User          │        │ _id                  │        ┌──────────────────────┐
-├─────────────────────┤        │ invoiceId            │        │       Setting         │
-│ _id                 │        │ productId            │        ├──────────────────────┤
-│ name                │        │ quantity             │        │ _id                  │
-│ email               │        │ price                │        │ storeName            │
-│ mobile              │        │ discountAmount       │        │ gstNumber            │
-│ password            │        │ taxableValue         │        │ address              │
-│ role                │        │ gstAmount            │        │ phone                │
-│ isActive            │        │ total                │        │ email                │
-└─────────────────────┘        └──────────────────────┘        │ cgstPercent          │
-                                                                │ sgstPercent          │
-                                                                │ state                │
-                                                                └──────────────────────┘
+│       Product        │        │       Customer        │        │       Invoice        │
+├───────────────────���─��        ├──────────────────────┤        ├──────────────────────┤
+│ _id                 │        │ _id                  │        │ _id                 │
+│ name                │        │ name                 │        │ invoiceNumber       │
+│ hsnCode             │        │ mobile               │        │ customerName       │
+│ price               │        │ email                │        │ customerEmail     │
+│ stock               │        │ state                │        │ items[]           │
+│ category            │        │ address              │        │ grossTotal        │
+│ gstRate             │        │ gstNumber            │        │ subTotal         │
+│ discountType        │        └──────────────────────┘        │ totalDiscount     │
+│ discountPercentage  │                   │                     │ billDiscount       │
+│ lowStockThreshold  │               1 ▼│                     │ billDiscountType   │
+└─────────────────────┘         ┌──────────────┐         │ billDiscountValue │
+           │                     │  Invoice    │         │ gstPercent       │
+           │                     │   Item      │         │ cgst            │
+           ▼                     ├────────────┤         │ sgst            │
+┌─────────────────────┐        │ _id         │         │ igst            │
+│        User         │        │ product     │         │ totalAmount     │
+├─────────────────────┤        │ productName │         │ status         │
+│ _id                │        │ hsnCode    │         │ paymentStatus  │
+│ name               │        │ quantity   │         │ isInterState  │
+│ email              │        │ price      │         │ createdBy     │
+│ mobile             │        │ discount%  │         │ createdAt    │
+│ password           │        │ discountAmt│         └──────────────────────┘
+│ role               │        │ taxableValue│
+│ isActive           │        │ gstRate    │
+└─────────────────────┘        │ gstAmount   │
+                             │ stockAtBilling│
+                             │ total      │
+                             └───────────┘
 ```
 
-### Schema Descriptions
+### Database Collection Schemas
 
-#### Product Entity
-Stores all product information including name, HSN code, price, stock levels, category, GST rate, and discount details. Each product supports multiple discount types — percentage-based or flat amount.
+#### Product Collection (`products`)
+Stores product information with HSN code, pricing, stock levels, category, GST rate, and discount configuration.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `_id` | ObjectId | auto | - | Unique product ID |
+| `name` | String | yes | - | Product name |
+| `hsnCode` | String | yes | - | HSN code for GST |
+| `price` | Number | yes | - | Base selling price |
+| `stock` | Number | no | 0 | Current stock quantity |
+| `category` | String | yes | - | Product category |
+| `gstRate` | Number | yes | 18 | GST rate (0,5,12,18,28) |
+| `discountType` | String | no | "percentage" | "percentage" or "flat" |
+| `discountPercentage` | Number | no | 0 | Discount value |
+| `lowStockThreshold` | Number | no | 10 | Low stock alert level |
+| `createdAt` | Date | auto | - | Creation timestamp |
+| `updatedAt` | Date | auto | - | Update timestamp |
+
+#### Customer Collection (`customers`)
+Maintains customer records with contact details, GST number, and state for GST determination (intra-state: CGST/SGST, inter-state: IGST).
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `_id` | ObjectId | auto | - | Unique customer ID |
+| `name` | String | yes | - | Customer full name |
+| `mobile` | String | yes | unique | Mobile number |
+| `email` | String | no | unique | Email address |
+| `state` | String | yes | "Gujarat" | State for GST determination |
+| `address` | String | no | - | Billing address |
+| `gstNumber` | String | no | unique | GSTIN number |
+| `createdAt` | Date | auto | - | Creation timestamp |
+| `updatedAt` | Date | auto | - | Update timestamp |
+
+#### Invoice Collection (`invoices`)
+Central document storing complete invoice details with embedded line items, GST breakdown, and payment status.
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `_id` | ObjectId | auto | - | Unique invoice ID |
+| `invoiceNumber` | String | yes | unique | Auto-generated (INV-0001) |
+| `customerName` | String | yes | - | Customer name (snapshot) |
+| `customerEmail` | String | no | - | Customer email (snapshot) |
+| `items` | Array | yes | - | Array of InvoiceItem objects |
+| `grossTotal` | Number | no | 0 | Total before discounts |
+| `subTotal` | Number | yes | - | Taxable amount after item disc |
+| `totalDiscount` | Number | no | 0 | Total item discounts |
+| `billDiscount` | Number | no | 0 | Bill-level discount amount |
+| `billDiscountType` | String | no | "percentage" | "percentage" or "flat" |
+| `billDiscountValue` | Number | no | 0 | Discount input value |
+| `gstPercent` | Number | yes | - | Effective GST rate |
+| `cgst` | Number | yes | - | CGST amount |
+| `sgst` | Number | yes | - | SGST amount |
+| `igst` | Number | yes | - | IGST amount |
+| `totalAmount` | Number | yes | - | Final payable amount |
+| `status` | String | no | "Active" | "Active" or "Cancelled" |
+| `paymentStatus` | String | no | "Unpaid" | "Paid" or "Unpaid" |
+| `isInterState` | Boolean | no | false | true = IGST, false = CGST/SGST |
+| `createdBy` | ObjectId | yes | - | User reference |
+| `createdAt` | Date | auto | - | Creation timestamp |
+| `updatedAt` | Date | auto | - | Update timestamp |
+
+#### InvoiceItem Embeddable Object
+Embedded inside Invoice.items array - stores line item details at billing time.
 
 | Field | Type | Description |
 |---|---|---|
-| `_id` | ObjectId | Unique product identifier |
-| `name` | String | Product name |
-| `hsnCode` | String | HSN code for GST classification |
-| `price` | Number | Base selling price |
-| `stock` | Number | Current stock quantity |
-| `category` | String | Product category |
-| `gstRate` | Number | Applicable GST rate (%) |
-| `discountType` | String | `percentage` or `flat` |
-| `discountPercent` | Number | Discount value |
-| `lowStockThreshold` | Number | Trigger level for low stock alert |
-
-#### Customer Entity
-Maintains customer records with contact details, GST number, and state information for accurate GST determination (CGST/SGST for intra-state, IGST for inter-state).
-
-| Field | Type | Description |
-|---|---|---|
-| `_id` | ObjectId | Unique customer identifier |
-| `name` | String | Customer full name |
-| `mobile` | String | Mobile number |
-| `email` | String | Email address |
-| `state` | String | State for GST type determination |
-| `gstNumber` | String | Customer's GSTIN |
-| `address` | String | Billing address |
-
-#### Invoice Entity
-The central entity that stores complete invoice details, including customer info, itemized breakdown, GST summary, and payment status.
-
-| Field | Type | Description |
-|---|---|---|
-| `_id` | ObjectId | Unique invoice identifier |
-| `invoiceNumber` | String | Auto-generated invoice number (e.g., INV-0001) |
-| `customerName` | String | Snapshot of customer name |
-| `customerEmail` | String | Snapshot of customer email |
-| `items` | Array | Array of InvoiceItem references |
-| `totalAmount` | Number | Final payable amount |
-| `status` | String | `active` or `cancelled` |
-| `paymentStatus` | String | Payment state |
-| `isInterState` | Boolean | Determines CGST/SGST vs IGST |
-| `createdBy` | ObjectId | User who created the invoice |
-| `createdAt` | Date | Invoice creation timestamp |
-
-#### InvoiceItem Entity
-Stores individual line items within an invoice, capturing product details, quantities, prices, discounts, and GST calculations at the time of billing.
-
-| Field | Type | Description |
-|---|---|---|
-| `invoiceId` | ObjectId | Parent invoice reference |
-| `productId` | ObjectId | Product reference |
+| `_id` | ObjectId | Auto-generated item ID |
+| `product` | ObjectId | Product reference |
+| `productName` | String | Product name (snapshot) |
+| `hsnCode` | String | HSN code (snapshot) |
 | `quantity` | Number | Quantity billed |
-| `price` | Number | Unit price at time of billing |
-| `discountAmount` | Number | Discount applied |
+| `price` | Number | Unit price at billing |
+| `discountPercent` | Number | Discount % applied |
+| `discountAmount` | Number | Discount amount |
 | `taxableValue` | Number | Value after discount, before GST |
-| `gstAmount` | Number | Total GST charged |
-| `total` | Number | Final line total |
+| `gstRate` | Number | GST rate % |
+| `gstAmount` | Number | GST amount |
+| `stockAtBilling` | Number | Stock snapshot at billing |
+| `total` | Number | Line item total |
 
-#### User Entity
-Manages system users with authentication, role-based access control, and activity tracking.
+#### User Collection (`users`)
+Manages system users with authentication, role-based access control.
 
-| Field | Type | Description |
-|---|---|---|
-| `name` | String | User's full name |
-| `email` | String | Login email |
-| `mobile` | String | Mobile number |
-| `password` | String | Bcrypt-hashed password |
-| `role` | String | `admin` or `cashier` |
-| `isActive` | Boolean | Account active status |
-
-#### Setting Entity
-Stores business-level configuration including store name, GST number, tax percentages, and address details.
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `_id` | ObjectId | auto | Unique user ID |
+| `name` | String | yes | User's full name |
+| `email` | String | yes, unique | Login email |
+| `mobile` | String | yes, unique | Mobile number |
+| `password` | String | yes | Bcrypt-hashed password |
+| `role` | String | no | "admin" or "cashier" |
+| `isActive` | Boolean | no | Account active status |
 
 ---
 
@@ -203,7 +221,7 @@ Authenticates a user and returns a JWT token.
 ---
 
 #### `POST /api/users/register`
-Registers a new user (admin only).
+Registers a new user. **Public (open registration).**
 
 **Request Body:**
 ```json
@@ -228,6 +246,11 @@ Registers a new user (admin only).
   }
 }
 ```
+
+---
+
+#### `GET /api/users`
+Fetches all users. **Admin only.**
 
 ---
 
@@ -258,7 +281,7 @@ Fetches a paginated list of products with optional search and sorting.
 ---
 
 #### `POST /api/products`
-Adds a new product.
+Adds a new product. **Admin only.**
 
 **Request Body:**
 ```json
@@ -277,7 +300,7 @@ Adds a new product.
 ---
 
 #### `PUT /api/products/:id`
-Updates an existing product by ID.
+Updates an existing product by ID. **Admin only.**
 
 **Request Body:**
 ```json
@@ -291,7 +314,7 @@ Updates an existing product by ID.
 ---
 
 #### `DELETE /api/products/:id`
-Deletes a product by ID.
+Deletes a product by ID. **Admin only.**
 
 **Response:**
 ```json
@@ -341,6 +364,11 @@ Deletes a customer by ID.
 
 ---
 
+#### `GET /api/customers/search/:mobile`
+Searches customer by mobile number.
+
+---
+
 ### 3.4 Invoice Management APIs
 
 #### `POST /api/invoices`
@@ -353,7 +381,7 @@ Creates a new GST-compliant invoice.
   "customerName": "John Doe",
   "customerEmail": "john@example.com",
   "items": [
-    { "product": "...", "quantity": 2, "discountPercent": 10 }
+    { "product": "...", "quantity": 2, "discountPercent": 10, "discountType": "percentage" }
   ],
   "billDiscountValue": 5,
   "billDiscountType": "percentage"
@@ -365,7 +393,7 @@ Creates a new GST-compliant invoice.
 {
   "success": true,
   "message": "Invoice created successfully",
-  "data": { "id": "...", "invoiceNumber": "INV-0001", "totalAmount": 1000 }
+  "data": { "_id": "...", "invoiceNumber": "INV-0001", "totalAmount": 1000 }
 }
 ```
 
@@ -383,13 +411,38 @@ Fetches complete details of a single invoice including all line items.
 
 ---
 
-#### `PATCH /api/invoices/:id/cancel`
-Cancels an invoice. Stock is restored upon cancellation.
+#### `PUT /api/invoices/:id`
+Updates invoice (customerName, customerEmail, paymentStatus). **Admin only.**
 
 ---
 
-#### `GET /api/invoices/daily-report`
-Generates a daily sales summary report.
+#### `PATCH /api/invoices/:id/cancel`
+Cancels an invoice. Stock is restored upon cancellation. **Admin only.**
+
+---
+
+#### `GET /api/invoices/cancelled`
+Fetches all cancelled invoices. **Admin only.**
+
+---
+
+#### `GET /api/invoices/daily-report?date=YYYY-MM-DD`
+Generates a daily sales summary report. **Admin only.**
+
+---
+
+#### `GET /api/invoices/reports/monthly?month=X&year=YYYY`
+Generates monthly sales + GST report. **Admin only.**
+
+---
+
+#### `GET /api/invoices/reports/monthly/pdf?month=X&year=YYYY`
+Generates monthly PDF report. **Admin only.**
+
+---
+
+#### `GET /api/invoices/invoice/:id/pdf`
+Downloads invoice PDF.
 
 **Query Parameters:**
 
@@ -405,6 +458,35 @@ Generates a daily sales summary report.
   "totalInvoices": 5,
   "totalSales": 5000,
   "data": [{ "invoiceNumber": "INV-0001", "totalAmount": 1000 }]
+}
+```
+
+---
+
+### 3.5 Dashboard API
+
+#### `GET /api/dashboard`
+Returns aggregated business metrics, recent invoices, sales chart data, GST breakdown, and low stock alerts.
+
+**Response:**
+```json
+{
+  "success": true,
+  "dashboard": {
+    "totalInvoices": 100,
+    "totalProducts": 50,
+    "totalCustomers": 30,
+    "totalSales": 50000,
+    "cancelledInvoicesCount": 5
+  },
+  "recentInvoices": [...],
+  "salesChart": [{ "_id": "2026-03", "total": 15000 }],
+  "gstData": {
+    "totalCGST": 1000,
+    "totalSGST": 1000,
+    "totalIGST": 0
+  },
+  "lowStockProducts": [{ "name": "Product A", "stock": 2, "lowStockThreshold": 10 }]
 }
 ```
 
