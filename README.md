@@ -473,3 +473,215 @@ The reports section provides daily and monthly sales summaries, GST breakdowns b
 * Bcrypt password hashing
 * Protected API endpoints via middleware
 
+---
+
+## 7. ER Diagram & Database Schema
+
+### Entity Relationship Diagram
+
+```
+┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+│      USER       │       │    CUSTOMER    │       │    PRODUCT     │
+├─────────────────┤       ├─────────────────┤       ├─────────────────┤
+│ _id (PK)        │       │ _id (PK)        │       │ _id (PK)        │
+│ name            │       │ name            │       │ name            │
+│ email           │       │ mobile          │       │ hsnCode         │
+│ mobile          │       │ email           │       │ price           │
+│ password        │       │ address         │       │ stock           │
+│ role            │       │ state           │       │ category        │
+│ isActive        │       │ gstNumber       │       │ gstRate         │
+│ createdAt       │       │ createdAt       │       │ discountPercent │
+└─────────────────┘       └─────────────────┘       │ discountType    │
+      │                         │                  │ lowStockThresh  │
+      │                         │                  │ createdAt       │
+      │                         │                  └─────────────────┘
+      │                         │                        │
+      │                         │                        │
+      └─────────────────────────┼────────────────────────┘
+                               │
+                    ┌───────────▼───────────┐
+                    │       INVOICE        │
+                    ├───────────────────────┤
+                    │ _id (PK)              │
+                    │ invoiceNumber (UQ)    │
+                    │ customerName          │
+                    │ customerEmail          │
+                    │ createdBy (FK → User) │
+                    │ items []              │◄───┐
+                    │ totalDiscount         │    │
+                    │ billDiscount          │    │
+                    │ billDiscountType      │    │
+                    │ billDiscountValue     │    │
+                    │ grossTotal            │    │
+                    │ subTotal              │    │
+                    │ gstPercent            │    │
+                    │ cgst                  │    │
+                    │ sgst                  │    │
+                    │ igst                  │    │
+                    │ totalAmount           │    │
+                    │ status                │    │
+                    │ paymentStatus         │    │
+                    │ isInterState          │    │
+                    │ createdAt             │    │
+                    └───────────────────────┘    │
+                               │                │
+                               └────────────────┘
+                          
+                    Items Array Structure:
+                    ┌─────────────────────────────────┐
+                    │ product (FK → Product)         │
+                    │ productName                     │
+                    │ hsnCode                         │
+                    │ quantity                        │
+                    │ price                           │
+                    │ discountPercent                 │
+                    │ discountAmount                  │
+                    │ taxableValue                    │
+                    │ gstRate                         │
+                    │ gstAmount                       │
+                    │ stockAtBilling                  │
+                    │ total                           │
+                    └─────────────────────────────────┘
+```
+
+### Database Schema Details
+
+#### 1. User Collection (`users`)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `_id` | ObjectId | Yes | Auto-generated unique identifier |
+| `name` | String | Yes | User's full name |
+| `email` | String | Yes | Unique email address |
+| `mobile` | String | Yes | Unique mobile number |
+| `password` | String | Yes | Bcrypt hashed password |
+| `role` | String | No | Enum: `admin`, `cashier` (default: `cashier`) |
+| `isActive` | Boolean | No | Account status (default: `true`) |
+| `createdAt` | Date | Yes | Timestamp |
+| `updatedAt` | Date | Yes | Timestamp |
+
+**Indexes:** `email` (unique), `mobile` (unique)
+
+---
+
+#### 2. Customer Collection (`customers`)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `_id` | ObjectId | Yes | Auto-generated unique identifier |
+| `name` | String | Yes | Customer's full name |
+| `mobile` | String | Yes | Unique mobile number |
+| `email` | String | No | Email address (unique, sparse) |
+| `state` | String | Yes | State name for GST calculation (default: `Gujarat`) |
+| `address` | String | No | Full address |
+| `gstNumber` | String | No | GSTIN number (unique, sparse, uppercase) |
+| `createdAt` | Date | Yes | Timestamp |
+| `updatedAt` | Date | Yes | Timestamp |
+
+**Indexes:** `mobile` (unique), `email` (unique, sparse), `gstNumber` (unique, sparse)
+
+---
+
+#### 3. Product Collection (`products`)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `_id` | ObjectId | Yes | Auto-generated unique identifier |
+| `name` | String | Yes | Product name |
+| `hsnCode` | String | Yes | HSN code for GST classification |
+| `price` | Number | Yes | Unit price |
+| `stock` | Number | No | Available quantity (default: `0`) |
+| `category` | String | Yes | Product category |
+| `gstRate` | Number | Yes | GST rate percentage (enum: `0,5,12,18,28`) |
+| `discountPercentage` | Number | No | Default discount percentage (default: `0`) |
+| `discountType` | String | No | Enum: `percentage`, `flat` (default: `percentage`) |
+| `lowStockThreshold` | Number | No | Alert threshold (default: `10`) |
+| `createdAt` | Date | Yes | Timestamp |
+| `updatedAt` | Date | Yes | Timestamp |
+
+**Indexes:** Default indexes on `_id`, compound index for search/sort
+
+---
+
+#### 4. Invoice Collection (`invoices`)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `_id` | ObjectId | Yes | Auto-generated unique identifier |
+| `invoiceNumber` | String | Yes | Unique invoice number (INV-0001 format) |
+| `customerName` | String | Yes | Customer name (denormalized) |
+| `customerEmail` | String | No | Customer email (denormalized) |
+| `createdBy` | ObjectId | Yes | FK → User (who created invoice) |
+| `items` | Array | Yes | Array of line items (see below) |
+| `totalDiscount` | Number | No | Total item-level discounts |
+| `billDiscount` | Number | No | Total bill discount applied |
+| `billDiscountType` | String | No | Enum: `percentage`, `flat` |
+| `billDiscountValue` | Number | No | Actual discount value entered |
+| `grossTotal` | Number | No | Total before any discounts |
+| `subTotal` | Number | Yes | Taxable value after discounts |
+| `gstPercent` | Number | Yes | Total GST percentage |
+| `cgst` | Number | Yes | Central GST amount (intra-state) |
+| `sgst` | Number | Yes | State GST amount (intra-state) |
+| `igst` | Number | Yes | Integrated GST amount (inter-state) |
+| `totalAmount` | Number | Yes | Final amount (subTotal + GST) |
+| `status` | String | No | Enum: `Active`, `Cancelled` (default: `Active`) |
+| `paymentStatus` | String | No | Enum: `Unpaid`, `Paid` (default: `Unpaid`) |
+| `isInterState` | Boolean | No | Inter-state flag for IGST (default: `false`) |
+| `createdAt` | Date | Yes | Timestamp |
+| `updatedAt` | Date | Yes | Timestamp |
+
+**Indexes:** `invoiceNumber` (unique), `createdBy`, `status`, compound indexes for pagination
+
+##### Items Sub-document Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `product` | ObjectId | Yes | FK → Product |
+| `productName` | String | Yes | Snapshot of product name at billing time |
+| `hsnCode` | String | No | HSN code snapshot |
+| `quantity` | Number | Yes | Quantity purchased |
+| `price` | Number | Yes | Unit price at time of billing |
+| `discountPercent` | Number | No | Item discount percentage |
+| `discountAmount` | Number | No | Calculated discount amount |
+| `taxableValue` | Number | Yes | (Price × Qty) - Discount |
+| `gstRate` | Number | No | GST rate applied |
+| `gstAmount` | Number | No | Calculated GST amount |
+| `stockAtBilling` | Number | Yes | Stock snapshot when invoice created |
+| `total` | Number | Yes | Line total (taxableValue + GST) |
+
+---
+
+### Relationships
+
+1. **User → Invoice** (One-to-Many)
+   - One user can create many invoices
+   - Invoice stores `createdBy` reference to User
+
+2. **Product → Invoice** (One-to-Many via items array)
+   - One product can appear in many invoice line items
+   - Invoice items store `product` reference to Product
+
+3. **Customer → Invoice** (Implicit via customerName/customerEmail)
+   - Customer data is denormalized in Invoice for historical accuracy
+   - No direct FK relationship (customer can be deleted after invoicing)
+
+---
+
+### GST Calculation Logic
+
+```
+1. Intra-State (same state: Gujarat): CGST + SGST
+   - CGST = (taxableValue × gstRate) / 2
+   - SGST = (taxableValue × gstRate) / 2
+
+2. Inter-State (different state): IGST
+   - IGST = taxableValue × gstRate
+
+3. Taxable Value Calculation:
+   taxableValue = (price × quantity) - discountAmount
+
+4. Discount Calculation:
+   - Percentage: discountAmount = (price × quantity × discountPercent) / 100
+   - Flat: discountAmount = discountPercent (flat amount)
+```
+
