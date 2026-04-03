@@ -55,38 +55,54 @@ This system provides an automated, GST-compliant solution featuring:
 ### Entity Relationship Diagram
 
 ```
-┌─────────────────────┐        ┌──────────────────────┐        ┌──────────────────────┐
-│       Product        │        │       Customer        │        │       Invoice        │
-├───────────────────���─��        ├──────────────────────┤        ├──────────────────────┤
-│ _id                 │        │ _id                  │        │ _id                 │
-│ name                │        │ name                 │        │ invoiceNumber       │
-│ hsnCode             │        │ mobile               │        │ customerName       │
-│ price               │        │ email                │        │ customerEmail     │
-│ stock               │        │ state                │        │ items[]           │
-│ category            │        │ address              │        │ grossTotal        │
-│ gstRate             │        │ gstNumber            │        │ subTotal         │
-│ discountType        │        └──────────────────────┘        │ totalDiscount     │
-│ discountPercentage  │                   │                     │ billDiscount       │
-│ lowStockThreshold  │               1 ▼│                     │ billDiscountType   │
-└─────────────────────┘         ┌──────────────┐         │ billDiscountValue │
-           │                     │  Invoice    │         │ gstPercent       │
-           │                     │   Item      │         │ cgst            │
-           ▼                     ├────────────┤         │ sgst            │
-┌─────────────────────┐        │ _id         │         │ igst            │
-│        User         │        │ product     │         │ totalAmount     │
-├─────────────────────┤        │ productName │         │ status         │
-│ _id                │        │ hsnCode    │         │ paymentStatus  │
-│ name               │        │ quantity   │         │ isInterState  │
-│ email              │        │ price      │         │ createdBy     │
-│ mobile             │        │ discount%  │         │ createdAt    │
-│ password           │        │ discountAmt│         └──────────────────────┘
-│ role               │        │ taxableValue│
-│ isActive           │        │ gstRate    │
-└─────────────────────┘        │ gstAmount   │
-                             │ stockAtBilling│
-                             │ total      │
-                             └───────────┘
++================+        +==================+        +=================+
+|    PRODUCT     |        |    CUSTOMER      |        |    INVOICE      |
++================+        +==================+        +=================+
+| _id (PK)      |        | _id (PK)        |        | _id (PK)       |
+| name          |<----->| name           |        | invoiceNumber  |
+| hsnCode      |        | mobile (unique) |        | customerName  |
+| price        |        | email (unique)  |        | customerEmail |
+| stock        |        | state         |        | items[]      |
+| category     |        | address      |        | grossTotal   |
+| gstRate      |        | gstNumber     |        | subTotal   |
+| discountType |        +==================+        | totalDiscount|
+| discountPercentage  |                   |              | billDiscount|
+| lowStockThreshold|              1:M|              | billDiscountType|
++================+        +=======+        | billDiscountValue|
+           |                        |              | gstPercent  |
+           |              +=======+        | cgst       |
+           |              | INVOICE |        | sgst       |
+           |              |  ITEM  |        | igst      |
+           |              +========+        | totalAmount|
+           +===========>| product |        | status    |
+                       | qty     |        | paymentStatus|
+                       | price  |        | isInterState|
+                       | disc%  |        | createdBy  |
+                       | discAmt|        | createdAt |
+                       | taxable|       +=================
+                       | gstRate |
+                       | gstAmt |
+                       | total |
+                       +========
++================+
+|     USER      |
++================+
+| _id (PK)    |
+| name       |
+| email      |
+| mobile    |
+| password  |
+| role      |
+| isActive  |
++================+
 ```
+
+### Relationships
+
+- **Product 1:M InvoiceItem** - One product can appear in many invoice items
+- **Invoice 1:M InvoiceItem** - One invoice has many line items
+- **User 1:M Invoice** - One user can create many invoices
+- **Customer 1:M Invoice** - One customer can have many invoices (stored as snapshot)
 
 ### Database Collection Schemas
 
