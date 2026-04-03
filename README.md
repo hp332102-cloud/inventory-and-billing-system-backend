@@ -6,14 +6,12 @@
 ## Table of Contents
 
 1. [Project Abstract & Objective](#1-project-abstract--objective)
-2. [ER Diagram & Database Schema](#2-er-diagram--database-schema)
-3. [API Documentation](#3-api-documentation)
-4. [System Screenshots & Explanation](#4-system-screenshots--explanation)
-5. [Technology Stack](#5-technology-stack)
-6. [System Architecture](#6-system-architecture)
-7. [Key Features](#7-key-features)
-8. [Viva Questions & Answers](#8-viva-questions--answers)
-9. [Presentation Script](#9-presentation-script)
+2. [API Documentation](#2-api-documentation)
+3. [System Screenshots & Explanation](#3-system-screenshots--explanation)
+4. [Technology Stack](#4-technology-stack)
+5. [System Architecture](#5-system-architecture)
+6. [Key Features](#6-key-features)
+7. [ER Diagram & Database Schema](./ER_DIAGRAM.md)
 
 ---
 
@@ -50,165 +48,14 @@ This system provides an automated, GST-compliant solution featuring:
 
 ---
 
-## 2. ER Diagram & Database Schema
-
-### Entity Relationship Diagram
-
-```
-+================+        +==================+        +=================+
-|    PRODUCT     |        |    CUSTOMER      |        |    INVOICE      |
-+================+        +==================+        +=================+
-| _id (PK)      |        | _id (PK)        |        | _id (PK)       |
-| name          |<----->| name           |        | invoiceNumber  |
-| hsnCode      |        | mobile (unique) |        | customerName  |
-| price        |        | email (unique)  |        | customerEmail |
-| stock        |        | state         |        | items[]      |
-| category     |        | address      |        | grossTotal   |
-| gstRate      |        | gstNumber     |        | subTotal   |
-| discountType |        +==================+        | totalDiscount|
-| discountPercentage  |                   |              | billDiscount|
-| lowStockThreshold|              1:M|              | billDiscountType|
-+================+        +=======+        | billDiscountValue|
-           |                        |              | gstPercent  |
-           |              +=======+        | cgst       |
-           |              | INVOICE |        | sgst       |
-           |              |  ITEM  |        | igst      |
-           |              +========+        | totalAmount|
-           +===========>| product |        | status    |
-                       | qty     |        | paymentStatus|
-                       | price  |        | isInterState|
-                       | disc%  |        | createdBy  |
-                       | discAmt|        | createdAt |
-                       | taxable|       +=================
-                       | gstRate |
-                       | gstAmt |
-                       | total |
-                       +========
-+================+
-|     USER      |
-+================+
-| _id (PK)    |
-| name       |
-| email      |
-| mobile    |
-| password  |
-| role      |
-| isActive  |
-+================+
-```
-
-### Relationships
-
-- **Product 1:M InvoiceItem** - One product can appear in many invoice items
-- **Invoice 1:M InvoiceItem** - One invoice has many line items
-- **User 1:M Invoice** - One user can create many invoices
-- **Customer 1:M Invoice** - One customer can have many invoices (stored as snapshot)
-
-### Database Collection Schemas
-
-#### Product Collection (`products`)
-Stores product information with HSN code, pricing, stock levels, category, GST rate, and discount configuration.
-
-| Field | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `_id` | ObjectId | auto | - | Unique product ID |
-| `name` | String | yes | - | Product name |
-| `hsnCode` | String | yes | - | HSN code for GST |
-| `price` | Number | yes | - | Base selling price |
-| `stock` | Number | no | 0 | Current stock quantity |
-| `category` | String | yes | - | Product category |
-| `gstRate` | Number | yes | 18 | GST rate (0,5,12,18,28) |
-| `discountType` | String | no | "percentage" | "percentage" or "flat" |
-| `discountPercentage` | Number | no | 0 | Discount value |
-| `lowStockThreshold` | Number | no | 10 | Low stock alert level |
-| `createdAt` | Date | auto | - | Creation timestamp |
-| `updatedAt` | Date | auto | - | Update timestamp |
-
-#### Customer Collection (`customers`)
-Maintains customer records with contact details, GST number, and state for GST determination (intra-state: CGST/SGST, inter-state: IGST).
-
-| Field | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `_id` | ObjectId | auto | - | Unique customer ID |
-| `name` | String | yes | - | Customer full name |
-| `mobile` | String | yes | unique | Mobile number |
-| `email` | String | no | unique | Email address |
-| `state` | String | yes | "Gujarat" | State for GST determination |
-| `address` | String | no | - | Billing address |
-| `gstNumber` | String | no | unique | GSTIN number |
-| `createdAt` | Date | auto | - | Creation timestamp |
-| `updatedAt` | Date | auto | - | Update timestamp |
-
-#### Invoice Collection (`invoices`)
-Central document storing complete invoice details with embedded line items, GST breakdown, and payment status.
-
-| Field | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `_id` | ObjectId | auto | - | Unique invoice ID |
-| `invoiceNumber` | String | yes | unique | Auto-generated (INV-0001) |
-| `customerName` | String | yes | - | Customer name (snapshot) |
-| `customerEmail` | String | no | - | Customer email (snapshot) |
-| `items` | Array | yes | - | Array of InvoiceItem objects |
-| `grossTotal` | Number | no | 0 | Total before discounts |
-| `subTotal` | Number | yes | - | Taxable amount after item disc |
-| `totalDiscount` | Number | no | 0 | Total item discounts |
-| `billDiscount` | Number | no | 0 | Bill-level discount amount |
-| `billDiscountType` | String | no | "percentage" | "percentage" or "flat" |
-| `billDiscountValue` | Number | no | 0 | Discount input value |
-| `gstPercent` | Number | yes | - | Effective GST rate |
-| `cgst` | Number | yes | - | CGST amount |
-| `sgst` | Number | yes | - | SGST amount |
-| `igst` | Number | yes | - | IGST amount |
-| `totalAmount` | Number | yes | - | Final payable amount |
-| `status` | String | no | "Active" | "Active" or "Cancelled" |
-| `paymentStatus` | String | no | "Unpaid" | "Paid" or "Unpaid" |
-| `isInterState` | Boolean | no | false | true = IGST, false = CGST/SGST |
-| `createdBy` | ObjectId | yes | - | User reference |
-| `createdAt` | Date | auto | - | Creation timestamp |
-| `updatedAt` | Date | auto | - | Update timestamp |
-
-#### InvoiceItem Embeddable Object
-Embedded inside Invoice.items array - stores line item details at billing time.
-
-| Field | Type | Description |
-|---|---|---|
-| `_id` | ObjectId | Auto-generated item ID |
-| `product` | ObjectId | Product reference |
-| `productName` | String | Product name (snapshot) |
-| `hsnCode` | String | HSN code (snapshot) |
-| `quantity` | Number | Quantity billed |
-| `price` | Number | Unit price at billing |
-| `discountPercent` | Number | Discount % applied |
-| `discountAmount` | Number | Discount amount |
-| `taxableValue` | Number | Value after discount, before GST |
-| `gstRate` | Number | GST rate % |
-| `gstAmount` | Number | GST amount |
-| `stockAtBilling` | Number | Stock snapshot at billing |
-| `total` | Number | Line item total |
-
-#### User Collection (`users`)
-Manages system users with authentication, role-based access control.
-
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `_id` | ObjectId | auto | Unique user ID |
-| `name` | String | yes | User's full name |
-| `email` | String | yes, unique | Login email |
-| `mobile` | String | yes, unique | Mobile number |
-| `password` | String | yes | Bcrypt-hashed password |
-| `role` | String | no | "admin" or "cashier" |
-| `isActive` | Boolean | no | Account active status |
-
----
-
-## 3. API Documentation
+## 2. API Documentation
 
 > **Base URL:** `/api`  
 > **Authentication:** All protected routes require a Bearer JWT token in the `Authorization` header.
 
 ---
 
-### 3.1 Authentication APIs
+### 2.1 Authentication APIs
 
 #### `POST /api/users/login`
 Authenticates a user and returns a JWT token.
@@ -270,7 +117,7 @@ Fetches all users. **Admin only.**
 
 ---
 
-### 3.2 Product Management APIs
+### 2.2 Product Management APIs
 
 #### `GET /api/products`
 Fetches a paginated list of products with optional search and sorting.
@@ -339,7 +186,7 @@ Deletes a product by ID. **Admin only.**
 
 ---
 
-### 3.3 Customer Management APIs
+### 2.3 Customer Management APIs
 
 #### `GET /api/customers`
 Fetches a paginated list of customers.
@@ -385,7 +232,7 @@ Searches customer by mobile number.
 
 ---
 
-### 3.4 Invoice Management APIs
+### 2.4 Invoice Management APIs
 
 #### `POST /api/invoices`
 Creates a new GST-compliant invoice.
@@ -479,7 +326,7 @@ Downloads invoice PDF.
 
 ---
 
-### 3.5 Dashboard API
+### 2.5 Dashboard API
 
 #### `GET /api/dashboard`
 Returns aggregated business metrics, recent invoices, sales chart data, GST breakdown, and low stock alerts.
@@ -508,36 +355,7 @@ Returns aggregated business metrics, recent invoices, sales chart data, GST brea
 
 ---
 
-### 3.5 Dashboard API
-
-#### `GET /api/dashboard`
-Returns aggregated business metrics, recent invoices, sales chart data, GST breakdown, and low stock alerts.
-
-**Response:**
-```json
-{
-  "success": true,
-  "dashboard": {
-    "totalInvoices": 100,
-    "totalProducts": 50,
-    "totalCustomers": 30,
-    "totalSales": 50000,
-    "cancelledInvoicesCount": 5
-  },
-  "recentInvoices": [...],
-  "salesChart": [{ "_id": "2026-03", "total": 15000 }],
-  "gstData": {
-    "totalCGST": 1000,
-    "totalSGST": 1000,
-    "totalIGST": 0
-  },
-  "lowStockProducts": [{ "name": "Product A", "stock": 2, "lowStockThreshold": 10 }]
-}
-```
-
----
-
-## 4. System Screenshots & Explanation
+## 3. System Screenshots & Explanation
 
 ### Dashboard Overview
 The main dashboard provides a comprehensive overview of business performance, featuring key metrics (total invoices, products, customers, and revenue), interactive sales trend charts, a GST breakdown panel, recent invoice history, and low stock alerts for proactive inventory management.
@@ -559,7 +377,7 @@ The reports section provides daily and monthly sales summaries, GST breakdowns b
 
 ---
 
-## 5. Technology Stack
+## 4. Technology Stack
 
 | Layer | Technology | Purpose |
 |---|---|---|
@@ -578,7 +396,7 @@ The reports section provides daily and monthly sales summaries, GST breakdowns b
 
 ---
 
-## 6. System Architecture
+## 5. System Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -612,7 +430,7 @@ The reports section provides daily and monthly sales summaries, GST breakdowns b
 
 ---
 
-## 7. Key Features
+## 6. Key Features
 
 ### Product Management
 * Add, edit, and delete products with complete details
