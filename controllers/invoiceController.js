@@ -7,6 +7,25 @@ const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
 
+// Function to load branding settings
+const getSettings = () => {
+  try {
+    const settingsPath = path.join(__dirname, "../config/settings.json");
+    if (fs.existsSync(settingsPath)) {
+      return JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+    }
+  } catch (error) {
+    console.error("Error loading settings:", error);
+  }
+  return {
+    companyName: "BILLING PRO",
+    logoPath: "uploads/logo.png",
+    address: "Ahmedabad, Gujarat",
+    phone: "9876543210",
+    email: "contact@billingpro.com"
+  };
+};
+
 
 
 // const COMPANY_STATE = "Gujarat"
@@ -775,11 +794,25 @@ exports.generateMonthlyReportPDF = async (req, res) => {
     doc.pipe(writeStream);//pdf ko file se connect karna means pdf content file write hona start karega
 
     // =====================
-    // PDF CONTENT
+    // PDF CONTENT & BRANDING (Header)
     // =====================
+    const settings = getSettings();
+    const logoFullPath = path.join(__dirname, "../", settings.logoPath);
 
-    doc.fontSize(20)
-      .text("SALES & GST REPORT", { align: "center" });
+    // 1. Company Name & Info (LEFT)
+    doc.fontSize(22).font("Helvetica-Bold").fillColor("#1e293b").text(settings.companyName, 50, 40);
+    doc.fontSize(10).font("Helvetica").fillColor("#64748b").text(settings.address, 50, 65);
+    doc.text(`Phone: ${settings.phone}`, 50, 77);
+
+    // 2. Logo (RIGHT)
+    if (fs.existsSync(logoFullPath)) {
+      doc.image(logoFullPath, 485, 25, { width: 60 });
+    }
+
+    doc.moveTo(50, 105).lineTo(550, 105).strokeColor("#cbd5e1").lineWidth(0.5).stroke();
+
+    doc.moveDown(2);
+    doc.fontSize(18).font("Helvetica-Bold").fillColor("#0f172a").text("SALES & GST REPORT", { align: "center" });
 
     doc.moveDown();
 
@@ -1762,25 +1795,36 @@ exports.generateInvoicePDF = async (req, res) => {
     const stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    // Header & Company Info
-    doc.fontSize(20).font("Helvetica-Bold").text("BILLING PRO", 40, 40);
-    doc.fontSize(10).font("Helvetica").text("Ahmedabad, Gujarat | Phone: 9876543210", 40, 65);
-    doc.fontSize(16).text("TAX INVOICE", 40, 90, { align: "right" });
-    doc.moveTo(40, 110).lineTo(550, 110).stroke();
+    // Header & Branding (Individual Invoice)
+    const settings = getSettings();
+    const logoFullPath = path.join(__dirname, "../", settings.logoPath);
 
-    // Customer Info
-    doc.fontSize(10).font("Helvetica-Bold").text("Bill To:", 40, 125);
-    doc.font("Helvetica").text(`Customer: ${invoice.customerName}`, 40, 140);
-    doc.text(`Email: ${invoice.customerEmail}`, 40, 155);
+    // 1. Company Name & Info (LEFT)
+    doc.fontSize(22).font("Helvetica-Bold").fillColor("#000").text(settings.companyName, 40, 40);
+    doc.fontSize(10).font("Helvetica").fillColor("#444").text(`${settings.address} | Phone: ${settings.phone}`, 40, 68);
 
-    doc.font("Helvetica-Bold").text("Invoice Details:", 350, 125);
-    doc.font("Helvetica").text(`Invoice No: ${invoice.invoiceNumber}`, 350, 140);
-    doc.text(`Date: ${new Date(invoice.createdAt).toLocaleDateString()}`, 350, 155);
+    // 2. Logo (RIGHT)
+    if (fs.existsSync(logoFullPath)) {
+      doc.image(logoFullPath, 480, 25, { width: 60 });
+    }
+
+    doc.fontSize(16).font("Helvetica-Bold").text("TAX INVOICE", 40, 105, { align: "right" });
+    doc.moveTo(40, 130).lineTo(550, 130).strokeColor("#000").lineWidth(1).stroke();
+
+    // Customer & Invoice Details (Pushed down more to avoid overlap)
+    let detailsTop = 150;
+    doc.fontSize(10).font("Helvetica-Bold").fillColor("#000").text("Bill To:", 40, detailsTop);
+    doc.font("Helvetica").text(`Customer: ${invoice.customerName}`, 40, detailsTop + 15);
+    doc.text(`Email: ${invoice.customerEmail}`, 40, detailsTop + 30);
+
+    doc.font("Helvetica-Bold").text("Invoice Details:", 350, detailsTop);
+    doc.font("Helvetica").text(`Invoice No: ${invoice.invoiceNumber}`, 350, detailsTop + 15);
+    doc.text(`Date: ${new Date(invoice.createdAt).toLocaleDateString()}`, 350, detailsTop + 30);
 
     // ==========================================
     // ✨ TABLE HEADER (HSN Column Added)
     // ==========================================
-    let tableTop = 200;
+    let tableTop = 230; 
     doc.fontSize(7.5).font("Helvetica-Bold");
 
     doc.text("No", 40, tableTop, { width: 18 });
